@@ -68,6 +68,7 @@ public class UT_MainService_Contracts
     [TestCleanup]
     public void TestCleanup()
     {
+        _neoSystem?.Dispose();
         Console.SetOut(_originalOutput);
         _consoleOutput.Dispose();
     }

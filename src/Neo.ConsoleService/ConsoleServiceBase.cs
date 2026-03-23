@@ -697,7 +697,8 @@ public abstract class ConsoleServiceBase
     protected string? ReadLine()
     {
         var isWin = Environment.OSVersion.Platform == PlatformID.Win32NT;
-        Task<string?> readLineTask = !isWin ? Task.Run(ReadTask) : Task.Run(Console.ReadLine);
+        var useInteractiveReader = !isWin && !Console.IsInputRedirected;
+        Task<string?> readLineTask = useInteractiveReader ? Task.Run(ReadTask) : Task.Run(Console.ReadLine);
         try
         {
             readLineTask.Wait(_shutdownTokenSource.Token);

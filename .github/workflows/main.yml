@@ -30,6 +30,16 @@ jobs:
       run: |
         dotnet publish -o ./out -c Release src/Neo.CLI
         find ./out -name 'config.json' | xargs perl -pi -e 's|LevelDBStore|MemoryStore|g'
+    - name: Stage optional RISC-V adapter plugin
+      if: runner.os == 'Linux'
+      run: |
+        if [ -n "${NEO_RISCV_PLUGIN_DIR:-}" ] && [ -d "${NEO_RISCV_PLUGIN_DIR}" ]; then
+          mkdir -p ./out/Plugins
+          cp -a "${NEO_RISCV_PLUGIN_DIR}/." ./out/Plugins/
+        elif [ -d ../neo-riscv-vm/dist/Plugins ]; then
+          mkdir -p ./out/Plugins
+          cp -a ../neo-riscv-vm/dist/Plugins/. ./out/Plugins/
+        fi
     - name: Install dependencies
       if: runner.os == 'Linux'
       run: sudo apt-get install libleveldb-dev expect

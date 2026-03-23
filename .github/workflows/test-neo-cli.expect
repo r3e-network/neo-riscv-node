@@ -4,6 +4,10 @@
 #
 set timeout 10
 
+# Clean up prior run artifacts so repeated local runs remain deterministic.
+catch { file delete -force "test-wallet1.json" }
+catch { file delete -force "test-wallet2.json" }
+
 # Start neo-cli
 spawn dotnet out/neo-cli.dll
 
