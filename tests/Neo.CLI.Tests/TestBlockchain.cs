@@ -21,6 +21,8 @@ namespace Neo.CLI.Tests;
 
 public static class TestBlockchain
 {
+    private static readonly Lazy<TestNeoSystem> SharedSystem = new(() => new TestNeoSystem(TestProtocolSettings.Default));
+
     private class TestStoreProvider : IStoreProvider
     {
         public readonly Dictionary<string, MemoryStore> Stores = [];
@@ -65,6 +67,12 @@ public static class TestBlockchain
 
     public static readonly UInt160[]? DefaultExtensibleWitnessWhiteList;
 
-    public static TestNeoSystem GetSystem() => new(TestProtocolSettings.Default);
+    public static TestNeoSystem GetSystem()
+    {
+        var system = SharedSystem.Value;
+        system.ResetStore();
+        return system;
+    }
+
     public static StoreCache GetTestSnapshotCache() => GetSystem().GetSnapshotCache();
 }
