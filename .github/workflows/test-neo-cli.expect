@@ -4,12 +4,22 @@
 #
 set timeout 10
 
+# The smoke test must run from the published output directory so plugin
+# discovery resolves against ./Plugins next to neo-cli.dll rather than any
+# unrelated repo-root plugin folders.
+cd out
+
+# Always validate the packaged plugin bundle inside ./Plugins. Local shells may
+# already export NEO_RISCV_HOST_LIB for other tests, which would otherwise
+# override the published plugin layout and make this smoke test nondeterministic.
+catch { unset env(NEO_RISCV_HOST_LIB) }
+
 # Clean up prior run artifacts so repeated local runs remain deterministic.
 catch { file delete -force "test-wallet1.json" }
 catch { file delete -force "test-wallet2.json" }
 
 # Start neo-cli
-spawn dotnet out/neo-cli.dll
+spawn dotnet neo-cli.dll
 
 # Expect the main input prompt
 expect {
