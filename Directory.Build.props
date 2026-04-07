@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <NeoSiblingCoreProject>$(MSBuildThisFileDirectory)..\neo-riscv-core\src\Neo\Neo.csproj</NeoSiblingCoreProject>
+    <NeoPackageVersion>3.9.1</NeoPackageVersion>
+    <UseSiblingNeoCoreProject Condition="Exists('$(NeoSiblingCoreProject)')">true</UseSiblingNeoCoreProject>
+    <UseSiblingNeoCoreProject Condition="'$(UseSiblingNeoCoreProject)' == ''">false</UseSiblingNeoCoreProject>
+  </PropertyGroup>
+
+</Project>

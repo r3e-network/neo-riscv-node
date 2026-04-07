@@ -12,7 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\neo-riscv-core\src\Neo\Neo.csproj" />
+    <ProjectReference Include="$(NeoSiblingCoreProject)" Condition="'$(UseSiblingNeoCoreProject)' == 'true'" />
+    <PackageReference Include="Neo" Version="$(NeoPackageVersion)" Condition="'$(UseSiblingNeoCoreProject)' != 'true'" />
     <PackageReference Include="System.CommandLine" Version="2.0.0" />
   </ItemGroup>
 
