@@ -26,16 +26,56 @@ public class RpcContractState
 
     public static RpcContractState FromJson(JObject json)
     {
+        var nef = RpcNefFile.FromJson((JObject)json["nef"]);
+        var manifest = ContractManifest.FromJson((JObject)json["manifest"]);
+
         return new RpcContractState
         {
             ContractState = new ContractState
             {
                 Id = (int)json["id"].AsNumber(),
                 UpdateCounter = (ushort)json["updatecounter"].AsNumber(),
+                Type = ResolveContractType(json, manifest, nef.Script),
                 Hash = UInt160.Parse(json["hash"].AsString()),
-                Nef = RpcNefFile.FromJson((JObject)json["nef"]),
-                Manifest = ContractManifest.FromJson((JObject)json["manifest"])
+                Nef = nef,
+                Manifest = manifest
             }
         };
+    }
+
+    private static ContractType ResolveContractType(JObject json, ContractManifest manifest, ReadOnlyMemory<byte> script)
+    {
+        var typeToken = json["type"];
+        if (typeToken is not null)
+        {
+            if (typeToken is JNumber)
+                return (ContractType)(byte)typeToken.AsNumber();
+
+            if (Enum.TryParse(typeToken.AsString(), ignoreCase: true, out ContractType parsedType))
+                return parsedType;
+        }
+
+        var vmMarker = manifest.Extra?["vm"]?.AsString();
+        if (!string.IsNullOrWhiteSpace(vmMarker))
+        {
+            return vmMarker switch
+            {
+                "legacy-neovm-v1" => ContractType.NeoVM,
+                "riscv32-polkavm-v1" => ContractType.RiscV,
+                _ => throw new FormatException($"Unsupported manifest extra.vm marker '{vmMarker}'.")
+            };
+        }
+
+        return IsRiscvBinary(script) ? ContractType.RiscV : ContractType.NeoVM;
+    }
+
+    private static bool IsRiscvBinary(ReadOnlyMemory<byte> script)
+    {
+        var span = script.Span;
+        return span.Length >= 4
+            && span[0] == 0x50
+            && span[1] == 0x56
+            && span[2] == 0x4D
+            && span[3] == 0x00;
     }
 }

@@ -13,6 +13,7 @@ using Moq;
 using Neo.Json;
 using Neo.Network.RPC.Models;
 using Neo.SmartContract;
+using Neo.SmartContract.Manifest;
 
 namespace Neo.Network.RPC.Tests;
 
@@ -88,6 +89,58 @@ public class UT_RpcModels
 
         var nef = RpcNefFile.FromJson((JObject)json["nef"]);
         Assert.AreEqual(json["nef"].ToString(), nef.ToJson().ToString());
+    }
+
+    [TestMethod()]
+    public void TestGetContractState_InfersTypeWhenJsonOmitsBackendField()
+    {
+        var manifest = new ContractManifest
+        {
+            Name = "riscv-test",
+            Groups = [],
+            SupportedStandards = [],
+            Abi = new ContractAbi
+            {
+                Events = [],
+                Methods =
+                [
+                    new ContractMethodDescriptor
+                    {
+                        Name = "verify",
+                        Parameters = [],
+                        ReturnType = ContractParameterType.Boolean,
+                        Offset = 0,
+                        Safe = true
+                    }
+                ]
+            },
+            Permissions = [ContractPermission.DefaultPermission],
+            Trusts = WildcardContainer<ContractPermissionDescriptor>.Create(),
+            Extra = new JObject
+            {
+                ["vm"] = "riscv32-polkavm-v1"
+            }
+        };
+        var nef = new NefFile
+        {
+            Compiler = "unit-test",
+            Source = string.Empty,
+            Tokens = [],
+            Script = new byte[] { 0x50, 0x56, 0x4D, 0x00, 0x01 }
+        };
+        nef.CheckSum = NefFile.ComputeChecksum(nef);
+
+        var json = new JObject
+        {
+            ["id"] = 7,
+            ["updatecounter"] = 0,
+            ["hash"] = UInt160.Zero.ToString(),
+            ["nef"] = nef.ToJson(),
+            ["manifest"] = manifest.ToJson()
+        };
+
+        var item = RpcContractState.FromJson(json);
+        Assert.AreEqual(ContractType.RiscV, item.ContractState.Type);
     }
 
     [TestMethod()]

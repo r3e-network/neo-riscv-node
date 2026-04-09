@@ -254,14 +254,7 @@ public class RpcClient : IDisposable
 
     public static ContractState ContractStateFromJson(JObject json)
     {
-        return new ContractState
-        {
-            Id = (int)json["id"].AsNumber(),
-            UpdateCounter = (ushort)(json["updatecounter"]?.AsNumber() ?? 0),
-            Hash = UInt160.Parse(json["hash"].AsString()),
-            Nef = RpcNefFile.FromJson((JObject)json["nef"]),
-            Manifest = ContractManifest.FromJson((JObject)json["manifest"])
-        };
+        return RpcContractState.FromJson(json).ContractState;
     }
 
     /// <summary>
