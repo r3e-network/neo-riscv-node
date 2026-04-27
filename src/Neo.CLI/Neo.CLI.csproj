@@ -13,6 +13,9 @@
 
   <ItemGroup>
     <ProjectReference Include="$(NeoSiblingCoreProject)" Condition="'$(UseSiblingNeoCoreProject)' == 'true'" />
+    <ProjectReference Include="..\..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj"
+                      ReferenceOutputAssembly="false"
+                      Condition="Exists('..\..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj')" />
     <PackageReference Include="Neo" Version="$(NeoPackageVersion)" Condition="'$(UseSiblingNeoCoreProject)' != 'true'" />
     <PackageReference Include="System.CommandLine" Version="2.0.0" />
   </ItemGroup>
@@ -31,5 +34,27 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
+
+  <PropertyGroup>
+    <RiscvAdapterDll>..\..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.dll</RiscvAdapterDll>
+    <RiscvHostLibRelease>..\..\..\neo-riscv-vm\target\release\libneo_riscv_host.so</RiscvHostLibRelease>
+    <RiscvHostLibDebug>..\..\..\neo-riscv-vm\target\debug\libneo_riscv_host.so</RiscvHostLibDebug>
+    <RiscvAdapterPluginDir>$(OutDir)Plugins\Neo.Riscv.Adapter</RiscvAdapterPluginDir>
+  </PropertyGroup>
+
+  <Target Name="StageRiscvAdapterPlugin" AfterTargets="Build" Condition="Exists('$(RiscvAdapterDll)')">
+    <MakeDir Directories="$(RiscvAdapterPluginDir)" />
+    <Copy SourceFiles="$(RiscvAdapterDll)"
+          DestinationFiles="$(RiscvAdapterPluginDir)\Neo.Riscv.Adapter.dll"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(RiscvHostLibRelease)"
+          DestinationFiles="$(RiscvAdapterPluginDir)\libneo_riscv_host.so"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(RiscvHostLibRelease)')" />
+    <Copy SourceFiles="$(RiscvHostLibDebug)"
+          DestinationFiles="$(RiscvAdapterPluginDir)\libneo_riscv_host.so"
+          SkipUnchangedFiles="true"
+          Condition="!Exists('$(RiscvHostLibRelease)') and Exists('$(RiscvHostLibDebug)')" />
+  </Target>
 
 </Project>
