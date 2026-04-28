@@ -39,22 +39,23 @@
     <RiscvAdapterDll>..\..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.dll</RiscvAdapterDll>
     <RiscvHostLibRelease>..\..\..\neo-riscv-vm\target\release\libneo_riscv_host.so</RiscvHostLibRelease>
     <RiscvHostLibDebug>..\..\..\neo-riscv-vm\target\debug\libneo_riscv_host.so</RiscvHostLibDebug>
+    <RiscvHostLib Condition="Exists('$(RiscvHostLibRelease)')">$(RiscvHostLibRelease)</RiscvHostLib>
+    <RiscvHostLib Condition="'$(RiscvHostLib)' == '' and Exists('$(RiscvHostLibDebug)')">$(RiscvHostLibDebug)</RiscvHostLib>
     <RiscvAdapterPluginDir>$(OutDir)Plugins\Neo.Riscv.Adapter</RiscvAdapterPluginDir>
   </PropertyGroup>
 
-  <Target Name="StageRiscvAdapterPlugin" AfterTargets="Build" Condition="Exists('$(RiscvAdapterDll)')">
+  <Target Name="StageRiscvAdapterPlugin" AfterTargets="Build" Condition="Exists('$(RiscvAdapterDll)') and '$(RiscvHostLib)' != ''">
     <MakeDir Directories="$(RiscvAdapterPluginDir)" />
     <Copy SourceFiles="$(RiscvAdapterDll)"
           DestinationFiles="$(RiscvAdapterPluginDir)\Neo.Riscv.Adapter.dll"
           SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(RiscvHostLibRelease)"
+    <Copy SourceFiles="$(RiscvHostLib)"
           DestinationFiles="$(RiscvAdapterPluginDir)\libneo_riscv_host.so"
-          SkipUnchangedFiles="true"
-          Condition="Exists('$(RiscvHostLibRelease)')" />
-    <Copy SourceFiles="$(RiscvHostLibDebug)"
-          DestinationFiles="$(RiscvAdapterPluginDir)\libneo_riscv_host.so"
-          SkipUnchangedFiles="true"
-          Condition="!Exists('$(RiscvHostLibRelease)') and Exists('$(RiscvHostLibDebug)')" />
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="RemoveIncompleteRiscvAdapterPlugin" AfterTargets="Build" Condition="'$(RiscvHostLib)' == '' and Exists('$(RiscvAdapterPluginDir)')">
+    <RemoveDir Directories="$(RiscvAdapterPluginDir)" />
   </Target>
 
 </Project>
