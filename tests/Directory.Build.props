@@ -16,9 +16,9 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <RiscvAdapterProject Condition="Exists('$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj')">$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj</RiscvAdapterProject>
-    <RiscvAdapterDll>$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.dll</RiscvAdapterDll>
-    <RiscvAdapterDepsJson>$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.deps.json</RiscvAdapterDepsJson>
+    <RiscvAdapterProject Condition="Exists('$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj')">$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj</RiscvAdapterProject>
+    <RiscvAdapterDll>$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.dll</RiscvAdapterDll>
+    <RiscvAdapterDepsJson>$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.deps.json</RiscvAdapterDepsJson>
     <RiscvHostLibFileName Condition="$([MSBuild]::IsOSPlatform('Windows'))">neo_riscv_host.dll</RiscvHostLibFileName>
     <RiscvHostLibFileName Condition="$([MSBuild]::IsOSPlatform('OSX'))">libneo_riscv_host.dylib</RiscvHostLibFileName>
     <RiscvHostLibFileName Condition="'$(RiscvHostLibFileName)' == ''">libneo_riscv_host.so</RiscvHostLibFileName>

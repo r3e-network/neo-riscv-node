@@ -13,9 +13,9 @@
 
   <ItemGroup>
     <ProjectReference Include="$(NeoSiblingCoreProject)" Condition="'$(UseSiblingNeoCoreProject)' == 'true'" />
-    <ProjectReference Include="..\..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj"
+    <ProjectReference Include="..\..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj"
                       ReferenceOutputAssembly="false"
-                      Condition="Exists('..\..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj')" />
+                      Condition="Exists('..\..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj')" />
     <PackageReference Include="Neo" Version="$(NeoPackageVersion)" Condition="'$(UseSiblingNeoCoreProject)' != 'true'" />
     <PackageReference Include="System.CommandLine" Version="2.0.0" />
   </ItemGroup>
@@ -36,7 +36,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <RiscvAdapterDll>..\..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.dll</RiscvAdapterDll>
+    <RiscvAdapterDll>..\..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.dll</RiscvAdapterDll>
     <RiscvHostLibRelease>..\..\..\neo-riscv-vm\target\release\libneo_riscv_host.so</RiscvHostLibRelease>
     <RiscvHostLibDebug>..\..\..\neo-riscv-vm\target\debug\libneo_riscv_host.so</RiscvHostLibDebug>
     <RiscvHostLib Condition="Exists('$(RiscvHostLibRelease)')">$(RiscvHostLibRelease)</RiscvHostLib>

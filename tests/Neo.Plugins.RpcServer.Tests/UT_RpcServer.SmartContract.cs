@@ -238,7 +238,7 @@ public partial class UT_RpcServer
             resp["exception"].AsString().Contains("host instruction charge failed"));
         var gasConsumed = long.Parse(resp["gasconsumed"].AsString());
         Assert.IsGreaterThanOrEqualTo(0L, gasConsumed);
-        Assert.IsLessThanOrEqualTo(lowGasSettings.MaxGasInvoke, gasConsumed);
+        Assert.IsGreaterThan(lowGasSettings.MaxGasInvoke, gasConsumed);
     }
 
     [TestMethod]

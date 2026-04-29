@@ -15,7 +15,6 @@ internal static class RiscvApplicationEngineTestProvider
     private const string AdapterAssemblyName = "Neo.Riscv.Adapter";
     private const string AdapterEnvVar = "NEO_RISCV_ADAPTER_DLL";
     private const string HostLibEnvVar = "NEO_RISCV_HOST_LIB";
-    private const string AllowNeoVmFallbackEnvVar = "NEO_RISCV_ALLOW_NEOVM_FALLBACK";
     private const string ProviderResolverTypeName = "Neo.SmartContract.RiscV.RiscvApplicationEngineProviderResolver";
 
     public static IDisposable Install()
@@ -24,13 +23,8 @@ internal static class RiscvApplicationEngineTestProvider
         var previousHostLibraryPath = Environment.GetEnvironmentVariable(HostLibEnvVar);
         var preferred = TryCreateRiscvProvider(out var resolverType);
         if (preferred is null)
-        {
-            if (IsNeoVmFallbackAllowed())
-                preferred = new NeoVMHostApplicationEngineProvider();
-            else
-                throw new InvalidOperationException(
-                    $"RISC-V adapter artifacts are required for plugin tests. Build neo-riscv-vm or set {AllowNeoVmFallbackEnvVar}=1 for an explicit NeoVM compatibility run.");
-        }
+            throw new InvalidOperationException(
+                "RISC-V adapter artifacts are required for plugin tests. Build neo-riscv-vm before running them.");
 
         ApplicationEngine.Provider = preferred;
         return new RestoreScope(previous, resolverType, previousHostLibraryPath);
@@ -95,8 +89,8 @@ internal static class RiscvApplicationEngineTestProvider
         return FirstExistingFile(
             configured,
             TestBundlePath($"{AdapterAssemblyName}.dll"),
-            SiblingVmPath(Path.Combine("compat", "Neo.Riscv.Adapter", "bin", "Debug", "net10.0", $"{AdapterAssemblyName}.dll")),
-            SiblingVmPath(Path.Combine("compat", "Neo.Riscv.Adapter", "bin", "Release", "net10.0", $"{AdapterAssemblyName}.dll")));
+            SiblingVmPath(Path.Combine("dotnet", "Neo.Riscv.Adapter", "bin", "Debug", "net10.0", $"{AdapterAssemblyName}.dll")),
+            SiblingVmPath(Path.Combine("dotnet", "Neo.Riscv.Adapter", "bin", "Release", "net10.0", $"{AdapterAssemblyName}.dll")));
     }
 
     private static string? ResolveHostLibraryPath()
@@ -159,9 +153,6 @@ internal static class RiscvApplicationEngineTestProvider
             return "libneo_riscv_host.dylib";
         return "libneo_riscv_host.so";
     }
-
-    private static bool IsNeoVmFallbackAllowed() =>
-        string.Equals(Environment.GetEnvironmentVariable(AllowNeoVmFallbackEnvVar), "1", StringComparison.Ordinal);
 
     private static void ResetResolverForTesting(Type? resolverType)
     {

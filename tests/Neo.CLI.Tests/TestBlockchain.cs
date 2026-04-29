@@ -75,4 +75,10 @@ public static class TestBlockchain
     }
 
     public static StoreCache GetTestSnapshotCache() => GetSystem().GetSnapshotCache();
+
+    public static void DisposeSystem()
+    {
+        if (SharedSystem.IsValueCreated)
+            SharedSystem.Value.Dispose();
+    }
 }
