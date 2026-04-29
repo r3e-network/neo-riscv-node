@@ -15,11 +15,13 @@ using Neo.Ledger;
 using Neo.Network.P2P.Payloads;
 using Neo.Persistence;
 using Neo.Persistence.Providers;
+using Neo.Plugins;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
 using Neo.VM;
 using Neo.Wallets;
 using Neo.Wallets.NEP6;
+using System.Runtime.CompilerServices;
 
 namespace Neo.Plugins.OracleService.Tests;
 
@@ -30,6 +32,7 @@ public static class TestBlockchain
     public static readonly NEP6Wallet s_wallet;
     public static readonly WalletAccount s_walletAccount;
     public static readonly OracleService s_oracle;
+    private static readonly Plugin[] s_previousPlugins;
 
     private class StoreProvider : IStoreProvider
     {
@@ -40,6 +43,9 @@ public static class TestBlockchain
     static TestBlockchain()
     {
         Console.WriteLine("initialize NeoSystem");
+        RuntimeHelpers.RunClassConstructor(typeof(NeoSystem).TypeHandle);
+        s_previousPlugins = Plugin.Plugins.ToArray();
+        Plugin.Plugins.Clear();
         StoreProvider _memoryStoreProvider = new();
         s_oracle = new();
         s_theNeoSystem = new NeoSystem(TestUtils.settings, _memoryStoreProvider);
@@ -117,5 +123,13 @@ public static class TestBlockchain
     {
         ResetStore();
         return s_theNeoSystem.GetSnapshotCache();
+    }
+
+    internal static void DisposeSystem()
+    {
+        s_theNeoSystem.Dispose();
+        s_store.Dispose();
+        Plugin.Plugins.Clear();
+        Plugin.Plugins.AddRange(s_previousPlugins);
     }
 }

@@ -15,4 +15,42 @@
     <Compile Include="$(MSBuildThisFileDirectory)AssemblyInfo.cs" Visible="false" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <RiscvAdapterProject Condition="Exists('$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj')">$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj</RiscvAdapterProject>
+    <RiscvAdapterDll>$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.dll</RiscvAdapterDll>
+    <RiscvAdapterDepsJson>$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\compat\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.deps.json</RiscvAdapterDepsJson>
+    <RiscvHostLibFileName Condition="$([MSBuild]::IsOSPlatform('Windows'))">neo_riscv_host.dll</RiscvHostLibFileName>
+    <RiscvHostLibFileName Condition="$([MSBuild]::IsOSPlatform('OSX'))">libneo_riscv_host.dylib</RiscvHostLibFileName>
+    <RiscvHostLibFileName Condition="'$(RiscvHostLibFileName)' == ''">libneo_riscv_host.so</RiscvHostLibFileName>
+    <RiscvHostLibRelease>$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\target\release\$(RiscvHostLibFileName)</RiscvHostLibRelease>
+    <RiscvHostLibDebug>$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\target\debug\$(RiscvHostLibFileName)</RiscvHostLibDebug>
+    <RiscvAdapterTestDir>$(TargetDir)RiscvAdapter</RiscvAdapterTestDir>
+    <RiscvAdapterLegacyPluginDir>$(TargetDir)Plugins\Neo.Riscv.Adapter</RiscvAdapterLegacyPluginDir>
+  </PropertyGroup>
+
+  <Target Name="BuildRiscvAdapterForNodeTests" BeforeTargets="StageRiscvAdapterPluginForNodeTests" Condition="'$(EnableRiscvNodeTestProvider)' == 'true' and '$(RiscvAdapterProject)' != ''">
+    <MSBuild Projects="$(RiscvAdapterProject)" Targets="Build" Properties="Configuration=$(Configuration)" />
+  </Target>
+
+  <Target Name="StageRiscvAdapterPluginForNodeTests" AfterTargets="Build" Condition="'$(EnableRiscvNodeTestProvider)' == 'true'">
+    <RemoveDir Directories="$(RiscvAdapterLegacyPluginDir)" Condition="Exists('$(RiscvAdapterLegacyPluginDir)')" />
+    <MakeDir Directories="$(RiscvAdapterTestDir)" Condition="Exists('$(RiscvAdapterDll)')" />
+    <Copy SourceFiles="$(RiscvAdapterDll)"
+          DestinationFiles="$(RiscvAdapterTestDir)\Neo.Riscv.Adapter.dll"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(RiscvAdapterDll)')" />
+    <Copy SourceFiles="$(RiscvAdapterDepsJson)"
+          DestinationFiles="$(RiscvAdapterTestDir)\Neo.Riscv.Adapter.deps.json"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(RiscvAdapterDepsJson)')" />
+    <Copy SourceFiles="$(RiscvHostLibRelease)"
+          DestinationFiles="$(RiscvAdapterTestDir)\$(RiscvHostLibFileName)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(RiscvHostLibRelease)')" />
+    <Copy SourceFiles="$(RiscvHostLibDebug)"
+          DestinationFiles="$(RiscvAdapterTestDir)\$(RiscvHostLibFileName)"
+          SkipUnchangedFiles="true"
+          Condition="!Exists('$(RiscvHostLibRelease)') and Exists('$(RiscvHostLibDebug)')" />
+  </Target>
+
 </Project>

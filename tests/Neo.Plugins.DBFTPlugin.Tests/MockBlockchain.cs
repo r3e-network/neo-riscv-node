@@ -14,6 +14,8 @@ using Microsoft.Extensions.Configuration;
 using Neo.Ledger;
 using Neo.Persistence;
 using Neo.Persistence.Providers;
+using Neo.Plugins;
+using System.Runtime.CompilerServices;
 
 namespace Neo.Plugins.DBFTPlugin.Tests;
 
@@ -22,6 +24,7 @@ public static class MockBlockchain
     public static readonly NeoSystem TheNeoSystem;
     public static readonly UInt160[] DefaultExtensibleWitnessWhiteList;
     private static readonly MemoryStore Store = new();
+    private static readonly Plugin[] PreviousPlugins;
 
     internal class StoreProvider : IStoreProvider
     {
@@ -33,6 +36,9 @@ public static class MockBlockchain
     static MockBlockchain()
     {
         Console.WriteLine("initialize NeoSystem");
+        RuntimeHelpers.RunClassConstructor(typeof(NeoSystem).TypeHandle);
+        PreviousPlugins = Plugin.Plugins.ToArray();
+        Plugin.Plugins.Clear();
         TheNeoSystem = new NeoSystem(MockProtocolSettings.Default, new StoreProvider());
     }
 
@@ -62,5 +68,13 @@ public static class MockBlockchain
     internal static DataCache GetTestSnapshot()
     {
         return TheNeoSystem.GetSnapshotCache().CloneCache();
+    }
+
+    internal static void DisposeSystem()
+    {
+        TheNeoSystem.Dispose();
+        Store.Dispose();
+        Plugin.Plugins.Clear();
+        Plugin.Plugins.AddRange(PreviousPlugins);
     }
 }

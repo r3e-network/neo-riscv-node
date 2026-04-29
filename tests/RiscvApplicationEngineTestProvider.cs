@@ -1,0 +1,195 @@
+#nullable enable
+
+using Neo.SmartContract;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.Loader;
+
+namespace Neo.Plugins.Tests;
+
+internal static class RiscvApplicationEngineTestProvider
+{
+    private const string AdapterAssemblyName = "Neo.Riscv.Adapter";
+    private const string AdapterEnvVar = "NEO_RISCV_ADAPTER_DLL";
+    private const string HostLibEnvVar = "NEO_RISCV_HOST_LIB";
+    private const string AllowNeoVmFallbackEnvVar = "NEO_RISCV_ALLOW_NEOVM_FALLBACK";
+    private const string ProviderResolverTypeName = "Neo.SmartContract.RiscV.RiscvApplicationEngineProviderResolver";
+
+    public static IDisposable Install()
+    {
+        var previous = ApplicationEngine.Provider;
+        var previousHostLibraryPath = Environment.GetEnvironmentVariable(HostLibEnvVar);
+        var preferred = TryCreateRiscvProvider(out var resolverType);
+        if (preferred is null)
+        {
+            if (IsNeoVmFallbackAllowed())
+                preferred = new NeoVMHostApplicationEngineProvider();
+            else
+                throw new InvalidOperationException(
+                    $"RISC-V adapter artifacts are required for plugin tests. Build neo-riscv-vm or set {AllowNeoVmFallbackEnvVar}=1 for an explicit NeoVM compatibility run.");
+        }
+
+        ApplicationEngine.Provider = preferred;
+        return new RestoreScope(previous, resolverType, previousHostLibraryPath);
+    }
+
+    private static IApplicationEngineProvider? TryCreateRiscvProvider(out Type? resolverType)
+    {
+        resolverType = null;
+        var adapterAssemblyPath = ResolveAdapterAssemblyPath();
+        if (adapterAssemblyPath is null)
+            return null;
+        var hostLibraryPath = ResolveHostLibraryPath();
+        if (hostLibraryPath is null)
+            return null;
+
+        var previousHostLibraryPath = Environment.GetEnvironmentVariable(HostLibEnvVar);
+        var changedHostLibraryPath = false;
+        try
+        {
+            var assembly = LoadAdapterAssembly(adapterAssemblyPath);
+            resolverType = assembly.GetType(ProviderResolverTypeName, throwOnError: true)!;
+            var resolveMethod = resolverType.GetMethod(
+                "ResolveRequiredProvider",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("ResolveRequiredProvider was not found.");
+
+            Environment.SetEnvironmentVariable(HostLibEnvVar, hostLibraryPath);
+            changedHostLibraryPath = true;
+            return (IApplicationEngineProvider)(resolveMethod.Invoke(null, null)
+                ?? throw new InvalidOperationException("ResolveRequiredProvider returned null."));
+        }
+        catch (Exception ex)
+        {
+            if (changedHostLibraryPath)
+                Environment.SetEnvironmentVariable(HostLibEnvVar, previousHostLibraryPath);
+            throw new InvalidOperationException(
+                $"RISC-V adapter was found at '{adapterAssemblyPath}', but it could not be initialized.",
+                ex);
+        }
+    }
+
+    private static Assembly LoadAdapterAssembly(string adapterAssemblyPath)
+    {
+        var fullPath = Path.GetFullPath(adapterAssemblyPath);
+        var loaded = AssemblyLoadContext.Default.Assemblies.FirstOrDefault(a =>
+            string.Equals(a.GetName().Name, AdapterAssemblyName, StringComparison.Ordinal));
+        if (loaded is not null)
+        {
+            if (string.Equals(Path.GetFullPath(loaded.Location), fullPath, StringComparison.OrdinalIgnoreCase))
+                return loaded;
+
+            throw new InvalidOperationException(
+                $"A different {AdapterAssemblyName} assembly is already loaded from '{loaded.Location}', expected '{fullPath}'.");
+        }
+
+        return AssemblyLoadContext.Default.LoadFromAssemblyPath(fullPath);
+    }
+
+    private static string? ResolveAdapterAssemblyPath()
+    {
+        var configured = Environment.GetEnvironmentVariable(AdapterEnvVar);
+        return FirstExistingFile(
+            configured,
+            TestBundlePath($"{AdapterAssemblyName}.dll"),
+            SiblingVmPath(Path.Combine("compat", "Neo.Riscv.Adapter", "bin", "Debug", "net10.0", $"{AdapterAssemblyName}.dll")),
+            SiblingVmPath(Path.Combine("compat", "Neo.Riscv.Adapter", "bin", "Release", "net10.0", $"{AdapterAssemblyName}.dll")));
+    }
+
+    private static string? ResolveHostLibraryPath()
+    {
+        var configured = Environment.GetEnvironmentVariable(HostLibEnvVar);
+        return FirstExistingFile(
+            configured,
+            TestBundlePath(GetPlatformFileName()),
+            SiblingVmPath(Path.Combine("target", "debug", GetPlatformFileName())),
+            SiblingVmPath(Path.Combine("target", "release", GetPlatformFileName())));
+    }
+
+    private static string? TestBundlePath(string fileName)
+    {
+        var baseDirectory = AppContext.BaseDirectory;
+        return FirstExistingFile(
+            Path.Combine(baseDirectory, "RiscvAdapter", fileName),
+            Path.Combine(Path.GetDirectoryName(baseDirectory) ?? baseDirectory, "RiscvAdapter", fileName));
+    }
+
+    private static string? SiblingVmPath(string relativePath)
+    {
+        foreach (var start in CandidateStartDirectories())
+        {
+            var directory = new DirectoryInfo(Path.GetFullPath(start));
+            while (directory is not null)
+            {
+                var candidate = Path.Combine(directory.FullName, "neo-riscv-vm", relativePath);
+                if (File.Exists(candidate))
+                    return candidate;
+                directory = directory.Parent;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> CandidateStartDirectories()
+    {
+        yield return AppContext.BaseDirectory;
+        yield return Environment.CurrentDirectory;
+    }
+
+    private static string? FirstExistingFile(params string?[] candidates)
+    {
+        foreach (var candidate in candidates)
+        {
+            if (!string.IsNullOrWhiteSpace(candidate) && File.Exists(candidate))
+                return Path.GetFullPath(candidate);
+        }
+
+        return null;
+    }
+
+    private static string GetPlatformFileName()
+    {
+        if (OperatingSystem.IsWindows())
+            return "neo_riscv_host.dll";
+        if (OperatingSystem.IsMacOS())
+            return "libneo_riscv_host.dylib";
+        return "libneo_riscv_host.so";
+    }
+
+    private static bool IsNeoVmFallbackAllowed() =>
+        string.Equals(Environment.GetEnvironmentVariable(AllowNeoVmFallbackEnvVar), "1", StringComparison.Ordinal);
+
+    private static void ResetResolverForTesting(Type? resolverType)
+    {
+        resolverType?.GetMethod("ResetForTesting", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            ?.Invoke(null, null);
+    }
+
+    private sealed class RestoreScope : IDisposable
+    {
+        private readonly IApplicationEngineProvider? _previous;
+        private readonly Type? _resolverType;
+        private readonly string? _previousHostLibraryPath;
+
+        public RestoreScope(
+            IApplicationEngineProvider? previous,
+            Type? resolverType,
+            string? previousHostLibraryPath)
+        {
+            _previous = previous;
+            _resolverType = resolverType;
+            _previousHostLibraryPath = previousHostLibraryPath;
+        }
+
+        public void Dispose()
+        {
+            ResetResolverForTesting(_resolverType);
+            ApplicationEngine.Provider = _previous;
+            Environment.SetEnvironmentVariable(HostLibEnvVar, _previousHostLibraryPath);
+        }
+    }
+}

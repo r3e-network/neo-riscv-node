@@ -1,8 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <EnableRiscvNodeTestProvider>true</EnableRiscvNodeTestProvider>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\plugins\ApplicationLogs\ApplicationLogs.csproj" />
     <ProjectReference Include="..\..\plugins\RocksDBStore\RocksDBStore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\RiscvApplicationEngineTestProvider.cs" Link="RiscvApplicationEngineTestProvider.cs" />
   </ItemGroup>
 
 </Project>

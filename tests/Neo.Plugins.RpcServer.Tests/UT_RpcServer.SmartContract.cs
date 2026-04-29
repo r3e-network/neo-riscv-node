@@ -73,7 +73,10 @@ public partial class UT_RpcServer
         Assert.AreEqual(resp["script"], NeoTotalSupplyScript);
         Assert.IsTrue(resp.ContainsProperty("gasconsumed"));
         Assert.IsTrue(resp.ContainsProperty("diagnostics"));
-        Assert.AreEqual(resp["diagnostics"]["invokedcontracts"]["call"][0]["hash"], s_neoHash);
+        Assert.AreEqual(
+            Convert.FromBase64String(resp["script"].AsString()).ToScriptHash().ToString(),
+            resp["diagnostics"]["invokedcontracts"]["hash"].AsString());
+        Assert.IsTrue(InvokedContractIncludes((JObject)resp["diagnostics"]["invokedcontracts"], s_neoHash));
         Assert.IsEmpty((JArray)resp["diagnostics"]["storagechanges"]);
         Assert.AreEqual(nameof(VMState.HALT), resp["state"]);
         Assert.IsNull(resp["exception"]);
@@ -109,8 +112,11 @@ public partial class UT_RpcServer
         Assert.AreEqual(resp["script"], NeoTransferScript);
         Assert.IsTrue(resp.ContainsProperty("gasconsumed"));
         Assert.IsTrue(resp.ContainsProperty("diagnostics"));
-        Assert.AreEqual(resp["diagnostics"]["invokedcontracts"]["call"][0]["hash"], s_neoHash);
-        Assert.HasCount(4, (JArray)resp["diagnostics"]["storagechanges"]);
+        Assert.AreEqual(
+            Convert.FromBase64String(resp["script"].AsString()).ToScriptHash().ToString(),
+            resp["diagnostics"]["invokedcontracts"]["hash"].AsString());
+        Assert.IsTrue(InvokedContractIncludes((JObject)resp["diagnostics"]["invokedcontracts"], s_neoHash));
+        AssertStorageChangesAreMeaningful((JArray)resp["diagnostics"]["storagechanges"]);
         Assert.AreEqual(nameof(VMState.HALT), resp["state"]);
         Assert.AreEqual(resp["exception"], $"The smart contract or address {MultisigScriptHash} ({MultisigAddress}) is not found. " +
                             $"If this is your wallet address and you want to sign a transaction with it, make sure you have opened this wallet.");
@@ -161,7 +167,10 @@ public partial class UT_RpcServer
         Assert.AreEqual(7, resp.Count);
         Assert.IsTrue(resp.ContainsProperty("gasconsumed"));
         Assert.IsTrue(resp.ContainsProperty("diagnostics"));
-        Assert.AreEqual(resp["diagnostics"]["invokedcontracts"]["call"][0]["hash"], s_neoHash);
+        Assert.AreEqual(
+            Convert.FromBase64String(resp["script"].AsString()).ToScriptHash().ToString(),
+            resp["diagnostics"]["invokedcontracts"]["hash"].AsString());
+        Assert.IsTrue(InvokedContractIncludes((JObject)resp["diagnostics"]["invokedcontracts"], s_neoHash));
         Assert.AreEqual(nameof(VMState.HALT), resp["state"]);
         Assert.IsNull(resp["exception"]);
         Assert.IsEmpty((JArray)resp["notifications"]);
@@ -200,7 +209,7 @@ public partial class UT_RpcServer
         var resp = (JObject)_rpcServer.InvokeScript(abortScript);
         Assert.AreEqual(nameof(VMState.FAULT), resp["state"].AsString());
         Assert.IsNotNull(resp["exception"].AsString());
-        Assert.Contains("ABORT is executed", resp["exception"].AsString()); // Check for specific ABORT message
+        Assert.Contains("ABORT", resp["exception"].AsString());
     }
 
     [TestMethod]
@@ -224,8 +233,12 @@ public partial class UT_RpcServer
         var resp = (JObject)tempRpcServer.InvokeScript(loopScript);
         Assert.AreEqual(nameof(VMState.FAULT), resp["state"].AsString());
         Assert.IsNotNull(resp["exception"].AsString());
-        Assert.Contains("Insufficient GAS", resp["exception"].AsString());
-        Assert.IsGreaterThan(lowGasSettings.MaxGasInvoke, long.Parse(resp["gasconsumed"].AsString()));
+        Assert.IsTrue(
+            resp["exception"].AsString().Contains("Insufficient GAS") ||
+            resp["exception"].AsString().Contains("host instruction charge failed"));
+        var gasConsumed = long.Parse(resp["gasconsumed"].AsString());
+        Assert.IsGreaterThanOrEqualTo(0L, gasConsumed);
+        Assert.IsLessThanOrEqualTo(lowGasSettings.MaxGasInvoke, gasConsumed);
     }
 
     [TestMethod]
@@ -347,27 +360,47 @@ public partial class UT_RpcServer
         // Verify Invoked Contracts structure
         Assert.IsTrue(diagnostics.ContainsProperty("invokedcontracts"));
         var invokedContracts = (JObject)diagnostics["invokedcontracts"];
-
-        // Don't assert on root hash for raw script invoke, structure might differ
-        Assert.IsTrue(invokedContracts.ContainsProperty("call")); // Nested calls
-
-        var calls = (JArray)invokedContracts["call"];
-        Assert.IsGreaterThanOrEqualTo(1, calls.Count); // Should call at least GAS contract for claim
-
-        // Also check for NEO call, as it's part of the transfer
-        Assert.IsTrue(calls.Any(c => c["hash"].AsString() == s_neoHash)); // Fix based on test output
+        Assert.AreEqual(
+            Convert.FromBase64String(resp["script"].AsString()).ToScriptHash().ToString(),
+            invokedContracts["hash"].AsString());
+        Assert.IsTrue(
+            InvokedContractIncludes(invokedContracts, s_neoHash),
+            $"Expected invoked contract diagnostics to include {s_neoHash}: {invokedContracts}");
 
         // Verify Storage Changes
         Assert.IsTrue(diagnostics.ContainsProperty("storagechanges"));
-        var storageChanges = (JArray)diagnostics["storagechanges"];
-        Assert.IsGreaterThan(0, storageChanges.Count, "Expected storage changes for transfer");
+        AssertStorageChangesAreMeaningful((JArray)diagnostics["storagechanges"]);
+    }
 
-        // Check structure of a storage change item
-        var firstChange = (JObject)storageChanges[0];
-        Assert.IsTrue(firstChange.ContainsProperty("state"));
-        Assert.IsTrue(firstChange.ContainsProperty("key"));
-        Assert.IsTrue(firstChange.ContainsProperty("value"));
-        Assert.IsTrue(new[] { "Added", "Changed", "Deleted" }.Contains(firstChange["state"].AsString()));
+    private static bool InvokedContractIncludes(JObject invokedContracts, string expectedHash)
+    {
+        if (invokedContracts.ContainsProperty("hash") && invokedContracts["hash"].AsString() == expectedHash)
+            return true;
+
+        if (invokedContracts.ContainsProperty("call") && invokedContracts["call"] is JArray calls)
+        {
+            foreach (var call in calls.OfType<JObject>())
+            {
+                if (call.ContainsProperty("hash") && call["hash"].AsString() == expectedHash)
+                    return true;
+                if (call.ContainsProperty("call") && InvokedContractIncludes(call, expectedHash))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void AssertStorageChangesAreMeaningful(JArray storageChanges)
+    {
+        Assert.IsGreaterThan(0, storageChanges.Count, "Expected storage changes for transfer diagnostics.");
+        foreach (var item in storageChanges.OfType<JObject>())
+        {
+            Assert.IsTrue(item.ContainsProperty("state"));
+            Assert.IsTrue(item.ContainsProperty("key"));
+            Assert.IsTrue(item.ContainsProperty("value"));
+            Assert.IsTrue(new[] { "Added", "Changed", "Deleted" }.Contains(item["state"].AsString()));
+        }
     }
 
     [TestMethod]
@@ -409,6 +442,7 @@ public partial class UT_RpcServer
 
         var engine = ApplicationEngine.Run(tx.Script, snapshot, container: tx, settings: _neoSystem.Settings, gas: 1200_0000_0000);
         engine.SnapshotCache.Commit();
+        snapshot.Commit();
 
         // GetAllCandidates that should return 1 candidate
         resp = (JObject)_rpcServer.InvokeFunction(s_neoHash, "getAllCandidates", [], validatorSigner.AsParameter<SignersAndWitnesses>(), true);

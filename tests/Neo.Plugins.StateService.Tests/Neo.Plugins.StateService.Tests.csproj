@@ -2,10 +2,15 @@
 
   <PropertyGroup>
     <Nullable>enable</Nullable>
+    <EnableRiscvNodeTestProvider>true</EnableRiscvNodeTestProvider>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\plugins\StateService\StateService.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\RiscvApplicationEngineTestProvider.cs" Link="RiscvApplicationEngineTestProvider.cs" />
   </ItemGroup>
 
 </Project>

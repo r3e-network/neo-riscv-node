@@ -63,6 +63,18 @@ public static class TestBlockchain
 
     public static readonly UInt160[]? DefaultExtensibleWitnessWhiteList;
 
-    public static TestNeoSystem GetSystem() => new(TestProtocolSettings.Default);
-    public static StoreCache GetTestSnapshotCache() => GetSystem().GetSnapshotCache();
+    public static TestNeoSystem GetSystem()
+    {
+        return new TestNeoSystem(TestProtocolSettings.Default);
+    }
+
+    public static StoreCache GetTestSnapshotCache()
+    {
+        var cache = GetSystem().GetSnapshotCache();
+        return cache;
+    }
+
+    public static void DisposeSystem()
+    {
+    }
 }

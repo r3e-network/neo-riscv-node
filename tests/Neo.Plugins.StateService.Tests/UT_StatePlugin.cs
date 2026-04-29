@@ -228,5 +228,5 @@ public class UT_StatePlugin
 
         return trie.Root.Hash;
     }
-}
 
+}

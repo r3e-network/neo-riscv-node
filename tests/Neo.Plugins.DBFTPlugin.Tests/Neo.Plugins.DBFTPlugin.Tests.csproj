@@ -1,11 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <EnableRiscvNodeTestProvider>true</EnableRiscvNodeTestProvider>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Akka.TestKit.MsTest" Version="1.5.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\plugins\DBFTPlugin\DBFTPlugin.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\RiscvApplicationEngineTestProvider.cs" Link="RiscvApplicationEngineTestProvider.cs" />
   </ItemGroup>
 
 </Project>
