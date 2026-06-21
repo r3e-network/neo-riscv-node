@@ -24,8 +24,9 @@ public class MockWallet : Wallet
     {
     }
 
-    public override string Name => "TestWallet";
+    public override string Name { get; set; } = "TestWallet";
     public override Version Version => new Version(1, 0, 0);
+    public override bool IsUnlocked => true;
 
     public override bool ChangePassword(string oldPassword, string newPassword)
     {

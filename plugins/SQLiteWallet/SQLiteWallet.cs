@@ -34,7 +34,11 @@ internal class SQLiteWallet : Wallet
     private readonly ScryptParameters _scrypt;
     private readonly Dictionary<UInt160, SQLiteWalletAccount> _accounts;
 
-    public override string Name => GetFileNameWithoutExtension(Path);
+    // The SQLite wallet name is bound to its file name; setting is a no-op (rename the file to rename the wallet).
+    public override string Name { get => GetFileNameWithoutExtension(Path); set { } }
+
+    // A SQLite wallet is decrypted (master key resolved) at open time, so it is always unlocked once constructed.
+    public override bool IsUnlocked => true;
 
     public override Version Version
     {

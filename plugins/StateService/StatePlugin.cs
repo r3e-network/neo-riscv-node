@@ -23,6 +23,7 @@ using Neo.SmartContract;
 using Neo.SmartContract.Native;
 using Neo.Wallets;
 using System.Buffers.Binary;
+using System.Security.Cryptography;
 using static Neo.Ledger.Blockchain;
 
 namespace Neo.Plugins.StateService;
@@ -97,10 +98,14 @@ public class StatePlugin : Plugin
         IReadOnlyList<ApplicationExecuted> applicationExecutedList)
     {
         if (system.Settings.Network != StateServiceSettings.Default.Network) return;
-        StateStore.Singleton.UpdateLocalStateRootSnapshot(block.Index,
-            snapshot.GetChangeSet()
-                .Where(p => p.Value.State != TrackState.None && p.Key.Id != NativeContract.Ledger.Id)
-                .ToList());
+        var changes = snapshot.GetChangeSet()
+            .Where(p => p.Value.State != TrackState.None && p.Key.Id != NativeContract.Ledger.Id)
+            .ToList();
+
+        if (ShouldTraceState(block.Index))
+            DumpStateChangeSet(block.Index, changes);
+
+        StateStore.Singleton.UpdateLocalStateRootSnapshot(block.Index, changes);
     }
 
     void Blockchain_Committed_Handler(NeoSystem system, Block block)
@@ -278,6 +283,55 @@ public class StatePlugin : Plugin
             ["localrootindex"] = StateStore.Singleton.LocalRootIndex,
             ["validatedrootindex"] = StateStore.Singleton.ValidatedRootIndex,
         };
+    }
+
+    internal static bool ShouldTraceState(uint index)
+        => uint.TryParse(Environment.GetEnvironmentVariable("NEO_RISCV_TRACE_STATE_BLOCK"), out var traceIndex)
+           && traceIndex == index;
+
+    private static void DumpStateChangeSet(uint index, IReadOnlyCollection<KeyValuePair<StorageKey, DataCache.Trackable>> changes)
+    {
+        var ordered = changes
+            .OrderBy(pair => pair.Key.Id)
+            .ThenBy(pair => Convert.ToHexString(pair.Key.Key.Span))
+            .ToArray();
+
+        using var sha = SHA256.Create();
+        foreach (var (key, trackable) in ordered)
+        {
+            var keyBytes = key.ToArray();
+            var valueBytes = trackable.State == TrackState.Deleted ? [] : trackable.Item.ToArray();
+            HashBytes(sha, BitConverter.GetBytes(key.Id));
+            HashBytes(sha, [(byte)trackable.State]);
+            HashBytes(sha, keyBytes);
+            HashBytes(sha, valueBytes);
+        }
+        sha.TransformFinalBlock([], 0, 0);
+
+        var hash = Convert.ToHexString(sha.Hash ?? []).ToLowerInvariant();
+        Console.Error.WriteLine($"[state-diagnostic] block={index} changes={ordered.Length} hash={hash}");
+        foreach (var (key, trackable) in ordered)
+        {
+            var value = trackable.State == TrackState.Deleted ? null : trackable.Item.ToArray();
+            Console.Error.WriteLine(
+                $"[state-diagnostic] block={index} change={trackable.State}:id={key.Id}:key={Convert.ToHexString(key.Key.Span).ToLowerInvariant()}:valueLen={(value is null ? "<deleted>" : value.Length)}:value={(value is null ? "<deleted>" : Preview(value))}");
+        }
+    }
+
+    private static void HashBytes(HashAlgorithm hash, byte[] bytes)
+    {
+        var length = BitConverter.GetBytes(bytes.Length);
+        hash.TransformBlock(length, 0, length.Length, null, 0);
+        if (bytes.Length > 0)
+            hash.TransformBlock(bytes, 0, bytes.Length, null, 0);
+    }
+
+    private static string Preview(byte[] value, int maxBytes = 128)
+    {
+        if (value.Length <= maxBytes)
+            return Convert.ToHexString(value).ToLowerInvariant();
+
+        return $"{Convert.ToHexString(value.AsSpan(0, maxBytes)).ToLowerInvariant()}...(+{value.Length - maxBytes} bytes)";
     }
 
     private ContractState GetHistoricalContractState(Trie trie, UInt160 scriptHash)

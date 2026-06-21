@@ -99,6 +99,11 @@ partial class RpcServer
                 throw new RpcException(RpcError.InvalidSize.WithData(reason.ToString()));
             case VerifyResult.Expired:
                 throw new RpcException(RpcError.ExpiredTransaction.WithData(reason.ToString()));
+            case VerifyResult.NotYetValid:
+                // v3.10.0 split the legacy Expired result into Expired (past ValidUntilBlock) and
+                // NotYetValid (ValidUntilBlock too far in the future). Both were reported as
+                // ExpiredTransaction before the split, so keep the RPC error code stable for clients.
+                throw new RpcException(RpcError.ExpiredTransaction.WithData(reason.ToString()));
             case VerifyResult.InsufficientFunds:
                 throw new RpcException(RpcError.InsufficientFunds.WithData(reason.ToString()));
             case VerifyResult.PolicyFail:

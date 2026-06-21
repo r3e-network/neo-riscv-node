@@ -25,6 +25,11 @@ public class Diagnostic : IDiagnostic
 
     public void Disposed() { }
 
+    // Native-to-native contract calls run synchronously in managed code without loading a VM
+    // execution context, so they are not reflected in the ContextLoaded-based invocation tree.
+    // This RPC diagnostic intentionally treats them as a no-op to keep the tree balanced.
+    public void CallFromNative(UInt160 hash, string method, VM.Types.StackItem[] args) { }
+
     public void ContextLoaded(ExecutionContext context)
     {
         var state = context.GetState<ExecutionContextState>();

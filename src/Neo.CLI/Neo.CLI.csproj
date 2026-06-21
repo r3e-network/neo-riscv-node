@@ -15,7 +15,8 @@
     <ProjectReference Include="$(NeoSiblingCoreProject)" Condition="'$(UseSiblingNeoCoreProject)' == 'true'" />
     <ProjectReference Include="..\..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj"
                       ReferenceOutputAssembly="false"
-                      Condition="Exists('..\..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj')" />
+                      Condition="Exists('..\..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj')
+                                 and Exists('..\..\..\neo-riscv-vm\..\..\..\neo-riscv-core\src\Neo\Neo.csproj')" />
     <PackageReference Include="Neo" Version="$(NeoPackageVersion)" Condition="'$(UseSiblingNeoCoreProject)' != 'true'" />
     <PackageReference Include="System.CommandLine" Version="2.0.0" />
   </ItemGroup>
@@ -37,8 +38,11 @@
 
   <PropertyGroup>
     <RiscvAdapterDll>..\..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.dll</RiscvAdapterDll>
-    <RiscvHostLibRelease>..\..\..\neo-riscv-vm\target\release\libneo_riscv_host.so</RiscvHostLibRelease>
-    <RiscvHostLibDebug>..\..\..\neo-riscv-vm\target\debug\libneo_riscv_host.so</RiscvHostLibDebug>
+    <RiscvHostLibFileName Condition="$([MSBuild]::IsOSPlatform('Windows'))">neo_riscv_host.dll</RiscvHostLibFileName>
+    <RiscvHostLibFileName Condition="$([MSBuild]::IsOSPlatform('OSX'))">libneo_riscv_host.dylib</RiscvHostLibFileName>
+    <RiscvHostLibFileName Condition="'$(RiscvHostLibFileName)' == ''">libneo_riscv_host.so</RiscvHostLibFileName>
+    <RiscvHostLibRelease>..\..\..\neo-riscv-vm\target\release\$(RiscvHostLibFileName)</RiscvHostLibRelease>
+    <RiscvHostLibDebug>..\..\..\neo-riscv-vm\target\debug\$(RiscvHostLibFileName)</RiscvHostLibDebug>
     <RiscvHostLib Condition="Exists('$(RiscvHostLibRelease)')">$(RiscvHostLibRelease)</RiscvHostLib>
     <RiscvHostLib Condition="'$(RiscvHostLib)' == '' and Exists('$(RiscvHostLibDebug)')">$(RiscvHostLibDebug)</RiscvHostLib>
     <RiscvAdapterPluginDir>$(OutDir)Plugins\Neo.Riscv.Adapter</RiscvAdapterPluginDir>
@@ -50,7 +54,7 @@
           DestinationFiles="$(RiscvAdapterPluginDir)\Neo.Riscv.Adapter.dll"
           SkipUnchangedFiles="true" />
     <Copy SourceFiles="$(RiscvHostLib)"
-          DestinationFiles="$(RiscvAdapterPluginDir)\libneo_riscv_host.so"
+          DestinationFiles="$(RiscvAdapterPluginDir)\$(RiscvHostLibFileName)"
           SkipUnchangedFiles="true" />
   </Target>
 

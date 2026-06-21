@@ -16,7 +16,14 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <RiscvAdapterProject Condition="Exists('$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj')">$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj</RiscvAdapterProject>
+    <!-- Only treat the VM sibling adapter as buildable when the *physical* sibling
+         layout is intact: the Adapter's own csproj reaches core via "..\..\..\neo-riscv-core",
+         which only resolves when core and vm share the same real parent directory. A symlink
+         that points the VM at a different filesystem tree (e.g. an external drive) breaks that
+         reverse reference, so we require it to exist too before attempting a source build.
+         Without this, EnableRiscvNodeTestProvider would try to build the Adapter and fail. -->
+    <RiscvAdapterProject Condition="Exists('$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj')
+                                    and Exists('$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\..\..\..\neo-riscv-core\src\Neo\Neo.csproj')">$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\Neo.Riscv.Adapter.csproj</RiscvAdapterProject>
     <RiscvAdapterDll>$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.dll</RiscvAdapterDll>
     <RiscvAdapterDepsJson>$(MSBuildThisFileDirectory)..\..\neo-riscv-vm\dotnet\Neo.Riscv.Adapter\bin\$(Configuration)\net10.0\Neo.Riscv.Adapter.deps.json</RiscvAdapterDepsJson>
     <RiscvHostLibFileName Condition="$([MSBuild]::IsOSPlatform('Windows'))">neo_riscv_host.dll</RiscvHostLibFileName>

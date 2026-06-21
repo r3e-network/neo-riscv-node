@@ -214,7 +214,7 @@ public sealed class OracleService : Plugin
         }
         catch (Exception e)
         {
-            Log(e, LogLevel.Error);
+            Log(e.ToString(), LogLevel.Error);
         }
         finally
         {

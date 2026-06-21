@@ -5,7 +5,7 @@
     <!-- Support both local sibling project (for development) and git submodule/subtree (for CI/builds) -->
     <NeoSiblingCoreProject>$(MSBuildThisFileDirectory)..\neo-riscv-core\src\Neo\Neo.csproj</NeoSiblingCoreProject>
     <NeoGitSubmoduleCoreProject>$(MSBuildThisFileDirectory)neo-riscv-core\src\Neo\Neo.csproj</NeoGitSubmoduleCoreProject>
-    <NeoPackageVersion>3.9.1</NeoPackageVersion>
+    <NeoPackageVersion>3.10.0</NeoPackageVersion>
 
     <!-- Priority: 1) Local sibling, 2) Git submodule, 3) NuGet package -->
     <UseSiblingNeoCoreProject Condition="Exists('$(NeoSiblingCoreProject)')">true</UseSiblingNeoCoreProject>

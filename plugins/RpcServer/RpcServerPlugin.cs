@@ -50,12 +50,12 @@ public class RpcServerPlugin : Plugin
 
         if (s.EnableCors && string.IsNullOrEmpty(s.RpcUser) == false && s.AllowOrigins.Length == 0)
         {
-            Log("RcpServer: CORS is misconfigured!", LogLevel.Warning);
-            Log($"You have {nameof(s.EnableCors)} and Basic Authentication enabled but " +
+            Logs.RuntimeLogger.Warning("RcpServer: CORS is misconfigured!");
+            Logs.RuntimeLogger.Information($"You have {nameof(s.EnableCors)} and Basic Authentication enabled but " +
             $"{nameof(s.AllowOrigins)} is empty in config.json for RcpServer. " +
             "You must add url origins to the list to have CORS work from " +
             $"browser with basic authentication enabled. " +
-            $"Example: \"AllowOrigins\": [\"http://{s.BindAddress}:{s.Port}\"]", LogLevel.Info);
+            $"Example: \"AllowOrigins\": [\"http://{s.BindAddress}:{s.Port}\"]");
         }
 
         var rpcRpcServer = new RpcServer(system, s);

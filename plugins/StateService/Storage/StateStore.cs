@@ -130,6 +130,8 @@ class StateStore : UntypedActor
     {
         _stateSnapshot?.Dispose();
         _stateSnapshot = Singleton.GetSnapshot();
+        var baseIndex = _stateSnapshot.CurrentLocalRootIndex();
+        var baseRoot = _stateSnapshot.CurrentLocalRootHash();
         foreach (var item in changeSet)
         {
             switch (item.Value.State)
@@ -154,6 +156,8 @@ class StateStore : UntypedActor
             RootHash = rootHash,
             Witness = null,
         };
+        if (StatePlugin.ShouldTraceState(height))
+            Console.Error.WriteLine($"[state-diagnostic] block={height} baseIndex={baseIndex?.ToString() ?? "<missing>"} baseRoot={baseRoot?.ToString() ?? "<missing>"} computedRoot={rootHash}");
         _stateSnapshot.AddLocalStateRoot(stateRoot);
     }
 
